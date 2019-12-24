@@ -353,9 +353,9 @@ N4BiasFieldCorrection.""" % _ants_version, DeprecationWarning)
         mrg_target = pe.Node(niu.Merge(2), name='mrg_target')
         wf.connect([
             (inu_n4, lap_target, [
-                (('output_image', _pop), 'op1')]),
+                (('bias_corrected_image', _pop), 'op1')]),
             (lap_tmpl, mrg_tmpl, [('output_image', 'in2')]),
-            (inu_n4, mrg_target, [('output_image', 'in1')]),
+            (inu_n4, mrg_target, [('bias_corrected_image', 'in1')]),
             (lap_target, mrg_target, [('output_image', 'in2')]),
             (mrg_tmpl, norm, [('out', 'fixed_image')]),
             (mrg_target, norm, [('out', 'moving_image')]),
@@ -364,7 +364,7 @@ N4BiasFieldCorrection.""" % _ants_version, DeprecationWarning)
         norm.inputs.fixed_image = tpl_target_path
         wf.connect([
             (inu_n4, norm, [
-                (('output_image', _pop), 'moving_image')]),
+                (('bias_corrected_image', _pop), 'moving_image')]),
         ])
 
     if atropos_refine:
@@ -384,7 +384,7 @@ N4BiasFieldCorrection.""" % _ants_version, DeprecationWarning)
         ])
         wf.connect([
             (inu_n4, atropos_wf, [
-                ('output_image', 'inputnode.in_files')]),
+                ('bias_corrected_image', 'inputnode.in_files')]),
             (thr_brainmask, atropos_wf, [
                 ('output_image', 'inputnode.in_mask')]),
             (get_brainmask, atropos_wf, [
@@ -762,16 +762,23 @@ def init_n4_only_wf(atropos_model=None,
                          run_without_submitting=True)
 
         inu_n4 = pe.MapNode(
-            N4BiasFieldCorrection(
-                dimension=3, save_bias=False, copy_header=True,
-                n_iterations=[50] * 4, convergence_threshold=1e-7,
-                shrink_factor=4, bspline_fitting_distance=200),
-            n_procs=omp_nthreads, name='inu_n4', iterfield=['input_image'])
+            Segment(gm_output_type=[False, False, False],
+                    wm_output_type=[False, False, False],
+                    csf_output_type=[False, False, False],
+                    clean_masks="thorough",
+                    save_bias_corrected=True,
+                    bias_regularization=0.001,
+                    bias_fwhm=30,
+                    sampling_distance=3,
+                    use_mcr=True,
+                    affine_regularization="mni"),
+            iterfield='data', name='inu_n4',
+            n_procs=1)  # n_procs=1 for reproducibility
 
         wf.connect([
-            (inputnode, inu_n4, [('in_files', 'input_image')]),
+            (inputnode, inu_n4, [('in_files', 'data')]),
             (inu_n4, atropos_wf, [
-                ('output_image', 'inputnode.in_files')]),
+                ('bias_corrected_image', 'inputnode.in_files')]),
             (thr_brainmask, atropos_wf, [
                 ('out_mask', 'inputnode.in_mask')]),
             (thr_brainmask, dil_brainmask, [('out_mask', 'op1')]),
