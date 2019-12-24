@@ -227,7 +227,7 @@ def init_brain_extraction_wf(name='brain_extraction_wf',
                 sampling_distance=3,
                 use_mcr=True,
                 affine_regularization="mni"),
-        iterfield='data', name='inu_n4',
+        iterfield=['data'], name='inu_n4',
         n_procs=1)  # n_procs=1 for reproducibility
 
     res_tmpl = pe.Node(ResampleImageBySpacing(
@@ -772,7 +772,7 @@ def init_n4_only_wf(atropos_model=None,
                     sampling_distance=3,
                     use_mcr=True,
                     affine_regularization="mni"),
-            iterfield='data', name='inu_n4',
+            iterfield=['data'], name='inu_n4',
             n_procs=1)  # n_procs=1 for reproducibility
 
         wf.connect([
