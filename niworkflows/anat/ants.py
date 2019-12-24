@@ -17,6 +17,9 @@ from nipype.interfaces.ants import N4BiasFieldCorrection, Atropos, MultiplyImage
 from nipype.interfaces.spm import Segment
 from nipype.algorithms.misc import Gunzip
 
+import nipype.interfaces.matlab as matlab
+matlab.MatlabCommand.set_default_matlab_command("matlab -nosplash -nodesktop -r ")
+
 from ..utils.misc import get_template_specs
 # niworkflows
 from ..interfaces.ants import (
