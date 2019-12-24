@@ -15,7 +15,7 @@ from nipype.interfaces import utility as niu
 from nipype.interfaces.fsl.maths import ApplyMask
 from nipype.interfaces.ants import N4BiasFieldCorrection, Atropos, MultiplyImages
 from nipype.interfaces.spm import Segment
-
+from nipype.algorithms.misc import Gunzip
 
 from ..utils.misc import get_template_specs
 # niworkflows
@@ -216,6 +216,9 @@ def init_brain_extraction_wf(name='brain_extraction_wf',
     #         bspline_fitting_distance=bspline_fitting_distance),
     #     n_procs=omp_nthreads, name='inu_n4', iterfield=['input_image'])
 
+    gunzip_4n4 = pe.MapNode(Gunzip(), name="gunzip_con",
+                            iterfield=['in_file'])
+
     inu_n4 = pe.MapNode(
         Segment(gm_output_type=[False, False, False],
                 wm_output_type=[False, False, False],
@@ -317,7 +320,8 @@ N4BiasFieldCorrection.""" % _ants_version, DeprecationWarning)
         (inputnode, init_aff, [('in_mask', 'fixed_image_mask')]),
         (inputnode, norm, [('in_mask', fixed_mask_trait)]),
         (inputnode, map_brainmask, [(('in_files', _pop), 'reference_image')]),
-        (trunc, inu_n4, [('output_image', 'data')]),
+        (trunc, gunzip_4n4, [('output_image', 'in_file')]),
+        (gunzip_4n4, inu_n4, [('out_file', 'data')]),
         (inu_n4, res_target, [
             (('bias_corrected_image', _pop), 'input_image')]),
         (res_tmpl, init_aff, [('output_image', 'fixed_image')]),
@@ -761,6 +765,9 @@ def init_n4_only_wf(atropos_model=None,
         sel_wm = pe.Node(niu.Select(index=atropos_model[-1] - 1), name='sel_wm',
                          run_without_submitting=True)
 
+        gunzip_4n4 = pe.MapNode(Gunzip(), name="gunzip_con",
+                            iterfield=['in_file'])
+
         inu_n4 = pe.MapNode(
             Segment(gm_output_type=[False, False, False],
                     wm_output_type=[False, False, False],
@@ -776,7 +783,8 @@ def init_n4_only_wf(atropos_model=None,
             n_procs=1)  # n_procs=1 for reproducibility
 
         wf.connect([
-            (inputnode, inu_n4, [('in_files', 'data')]),
+            (inputnode, gunzip_4n4, [('in_files', 'in_file')]),
+            (gunzip_4n4, inu_n4, [('out_file', 'data')]),
             (inu_n4, atropos_wf, [
                 ('bias_corrected_image', 'inputnode.in_files')]),
             (thr_brainmask, atropos_wf, [
