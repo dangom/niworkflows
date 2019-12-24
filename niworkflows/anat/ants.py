@@ -14,6 +14,8 @@ from nipype.pipeline import engine as pe
 from nipype.interfaces import utility as niu
 from nipype.interfaces.fsl.maths import ApplyMask
 from nipype.interfaces.ants import N4BiasFieldCorrection, Atropos, MultiplyImages
+from nipype.interfaces.spm import Segment
+
 
 from ..utils.misc import get_template_specs
 # niworkflows
@@ -207,12 +209,26 @@ def init_brain_extraction_wf(name='brain_extraction_wf',
 
     trunc = pe.MapNode(ImageMath(operation='TruncateImageIntensity', op2='0.01 0.999 256'),
                        name='truncate_images', iterfield=['op1'])
+    # inu_n4 = pe.MapNode(
+    #     N4BiasFieldCorrection(
+    #         dimension=3, save_bias=False, copy_header=True,
+    #         n_iterations=[50] * 4, convergence_threshold=1e-7, shrink_factor=4,
+    #         bspline_fitting_distance=bspline_fitting_distance),
+    #     n_procs=omp_nthreads, name='inu_n4', iterfield=['input_image'])
+
     inu_n4 = pe.MapNode(
-        N4BiasFieldCorrection(
-            dimension=3, save_bias=False, copy_header=True,
-            n_iterations=[50] * 4, convergence_threshold=1e-7, shrink_factor=4,
-            bspline_fitting_distance=bspline_fitting_distance),
-        n_procs=omp_nthreads, name='inu_n4', iterfield=['input_image'])
+        Segment(gm_output_type=[False, False, False],
+                wm_output_type=[False, False, False],
+                csf_output_type=[False, False, False],
+                clean_masks="thorough",
+                save_bias_corrected=True,
+                bias_regularization=0.001,
+                bias_fwhm=30,
+                sampling_distance=3,
+                use_mcr=True,
+                affine_regularization="mni"),
+        iterfield='data', name='inu_n4',
+        n_procs=1)  # n_procs=1 for reproducibility
 
     res_tmpl = pe.Node(ResampleImageBySpacing(
         out_spacing=(4, 4, 4), apply_smoothing=True), name='res_tmpl')
@@ -301,9 +317,9 @@ N4BiasFieldCorrection.""" % _ants_version, DeprecationWarning)
         (inputnode, init_aff, [('in_mask', 'fixed_image_mask')]),
         (inputnode, norm, [('in_mask', fixed_mask_trait)]),
         (inputnode, map_brainmask, [(('in_files', _pop), 'reference_image')]),
-        (trunc, inu_n4, [('output_image', 'input_image')]),
+        (trunc, inu_n4, [('output_image', 'data')]),
         (inu_n4, res_target, [
-            (('output_image', _pop), 'input_image')]),
+            (('bias_corrected_image', _pop), 'input_image')]),
         (res_tmpl, init_aff, [('output_image', 'fixed_image')]),
         (res_target, init_aff, [('output_image', 'moving_image')]),
         (init_aff, norm, [('output_transform', 'initial_moving_transform')]),
