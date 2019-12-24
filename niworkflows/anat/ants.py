@@ -219,7 +219,7 @@ def init_brain_extraction_wf(name='brain_extraction_wf',
     gunzip_4n4 = pe.MapNode(Gunzip(), name="gunzip_con",
                             iterfield=['in_file'])
 
-    inu_n4 = pe.Node(
+    inu_n4 = pe.MapNode(
         Segment(gm_output_type=[False, False, False],
                 wm_output_type=[False, False, False],
                 csf_output_type=[False, False, False],
@@ -230,7 +230,8 @@ def init_brain_extraction_wf(name='brain_extraction_wf',
                 sampling_distance=3,
                 use_mcr=True,
                 affine_regularization="mni"),
-        name='inu_n4')  # n_procs=1 for reproducibility
+        iterfield=['data'], name='inu_n4',
+        n_procs=1)  # n_procs=1 for reproducibility
 
     res_tmpl = pe.Node(ResampleImageBySpacing(
         out_spacing=(4, 4, 4), apply_smoothing=True), name='res_tmpl')
@@ -765,9 +766,9 @@ def init_n4_only_wf(atropos_model=None,
                          run_without_submitting=True)
 
         gunzip_4n4 = pe.MapNode(Gunzip(), name="gunzip_con",
-                                iterfield=['in_file'])
+                            iterfield=['in_file'])
 
-        inu_n4 = pe.Node(
+        inu_n4 = pe.MapNode(
             Segment(gm_output_type=[False, False, False],
                     wm_output_type=[False, False, False],
                     csf_output_type=[False, False, False],
@@ -778,7 +779,8 @@ def init_n4_only_wf(atropos_model=None,
                     sampling_distance=3,
                     use_mcr=True,
                     affine_regularization="mni"),
-            name='inu_n4')  # n_procs=1 for reproducibility
+            iterfield=['data'], name='inu_n4',
+            n_procs=1)  # n_procs=1 for reproducibility
 
         wf.connect([
             (inputnode, gunzip_4n4, [('in_files', 'in_file')]),
