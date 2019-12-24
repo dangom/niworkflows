@@ -231,7 +231,7 @@ def init_brain_extraction_wf(name='brain_extraction_wf',
                 use_mcr=True,
                 affine_regularization="mni"),
         iterfield=['data'], name='inu_n4',
-        n_procs=1)  # n_procs=1 for reproducibility
+        mem_gb=32, serial=True, run_without_submitting=True)  # n_procs=1 for reproducibility
 
     res_tmpl = pe.Node(ResampleImageBySpacing(
         out_spacing=(4, 4, 4), apply_smoothing=True), name='res_tmpl')
@@ -780,7 +780,7 @@ def init_n4_only_wf(atropos_model=None,
                     use_mcr=True,
                     affine_regularization="mni"),
             iterfield=['data'], name='inu_n4',
-            n_procs=1)  # n_procs=1 for reproducibility
+            mem_gb=32, serial=True, run_without_submitting=True)  # n_procs=1 for reproducibility
 
         wf.connect([
             (inputnode, gunzip_4n4, [('in_files', 'in_file')]),
